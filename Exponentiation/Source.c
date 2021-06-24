@@ -110,6 +110,6 @@ int Array_Part_Percentage_Matches(unsigned int *array_size_percentage, int *proc
 */
 void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part)
 {
-    if (!Array_Part_Percentage_Valid) return;
+    if (!Array_Part_Percentage_Valid(array_size_percentage, processing_part)) return;
     printf("%d\n%d\n", array_size_percentage, processing_part);
 }
