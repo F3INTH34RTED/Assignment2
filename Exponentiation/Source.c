@@ -12,13 +12,13 @@
 #define ARRAY_SIZE 1024
 const unsigned int C_ARRAY_SIZE = ARRAY_SIZE;
 
-typedef int bool;
 enum { bool_false, bool_true };
 
 enum { FIRST_ARRAY_PART = 1, SECOND_ARRAY_PART, FULL_ARRAY_PART };
 
 char *Get_Kernel_File(char *file_name);
 void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part);
+void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part);
 int Array_Part_Percentage_Valid(unsigned int array_size_percentage, int processing_part);
 int Array_Part_Percentage_Matches(unsigned int *array_size_percentage, int *processing_part);
 
@@ -111,5 +111,13 @@ int Array_Part_Percentage_Matches(unsigned int *array_size_percentage, int *proc
 void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part)
 {
     if (!Array_Part_Percentage_Valid(array_size_percentage, processing_part)) return;
+    if (!Array_Part_Percentage_Matches(&array_size_percentage, &processing_part)) return;
+    printf("%d\n%d\n", array_size_percentage, processing_part);
+}
+
+void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part)
+{
+    if (!Array_Part_Percentage_Valid(array_size_percentage, processing_part)) return;
+    if (!Array_Part_Percentage_Matches(&array_size_percentage, &processing_part)) return;
     printf("%d\n%d\n", array_size_percentage, processing_part);
 }
