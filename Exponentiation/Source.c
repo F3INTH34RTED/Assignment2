@@ -24,7 +24,26 @@ int Array_Part_Percentage_Matches(unsigned int *array_size_percentage, int *proc
 
 int main()
 {
-    Execute_On_Cpu(100, FIRST_ARRAY_PART);
+    int *a = (int *)malloc(sizeof(int) * C_ARRAY_SIZE);
+    int *b = (int *)malloc(sizeof(int) * C_ARRAY_SIZE);
+    int *c = (int *)malloc(sizeof(int) * C_ARRAY_SIZE);
+
+    for (int i = 0; i < C_ARRAY_SIZE; ++i)
+    {
+        a[i] = i;
+        b[i] = C_ARRAY_SIZE - i - 1;
+        c[i] = 0;
+        printf("%d\n%d\n%d\n", a[i], b[i], c[i]);
+    }
+
+    free(a);
+    free(b);
+    free(c);
+
+    system("pause");
+    system("cls");
+
+    Execute_On_Cpu(50, FIRST_ARRAY_PART);
 	system("pause");
 	return 0;
 }
@@ -112,12 +131,16 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part)
 {
     if (!Array_Part_Percentage_Valid(array_size_percentage, processing_part)) return;
     if (!Array_Part_Percentage_Matches(&array_size_percentage, &processing_part)) return;
-    printf("%d\n%d\n", array_size_percentage, processing_part);
+    int array_size = (int)(C_ARRAY_SIZE * (array_size_percentage / 100.0));
+    printf("%d\n%d\n", array_size, processing_part);
+
 }
 
 void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part)
 {
     if (!Array_Part_Percentage_Valid(array_size_percentage, processing_part)) return;
     if (!Array_Part_Percentage_Matches(&array_size_percentage, &processing_part)) return;
-    printf("%d\n%d\n", array_size_percentage, processing_part);
+    int array_size = (int)(C_ARRAY_SIZE * (array_size_percentage / 100.0));
+    printf("%d\n%d\n", array_size, processing_part);
+
 }
