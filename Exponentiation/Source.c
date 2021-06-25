@@ -111,6 +111,7 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int
     case SECOND_HALF_OF_ARRAY:
         start = C_ARRAY_SIZE-array_size ;
         end = C_ARRAY_SIZE-1;
+        array_size = C_ARRAY_SIZE - start;
         break;
 
     case FULL_ARRAY:
@@ -224,13 +225,13 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int
     }
     else printf("Queue created successfully!\n");
 
-    size_t local_size = 2, global_size = (size_t)ceil(C_ARRAY_SIZE / (float)local_size) * local_size;
+    size_t local_size = 2, global_size = (size_t)ceil(array_size / (float)local_size) * local_size;
     printf("Local size: %zu\nGlobal size: %zu\n", local_size, global_size);
     system("pause");
     system("cls");
 
     // CREATE BUFFER
-    cl_mem clmem_input_array_a = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size+1), NULL, &status);
+    cl_mem clmem_input_array_a = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
     if (status != CL_SUCCESS)
     {
         printf("Could not create buffer for result array.\n");
@@ -247,7 +248,7 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int
     }
     else printf("Buffer a created successfully!\n");
 
-    cl_mem clmem_input_array_b = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size+1), NULL, &status);
+    cl_mem clmem_input_array_b = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
     if (status != CL_SUCCESS)
     {
         printf("Could not create buffer for result array.\n");
@@ -265,7 +266,7 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int
     }
     else printf("Buffer b created successfully!\n");
 
-    cl_mem clmem_result_array_c = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size+1), NULL, &status);
+    cl_mem clmem_result_array_c = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
     if (status != CL_SUCCESS)
     {
         printf("Could not create buffer for result array.\n");
@@ -285,17 +286,17 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int
     else printf("Buffer c created successfully!\n");
 
     // WRITE BUFFER TO DEVICE MEMORY
-    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_a, CL_TRUE, 0,(array_size+1) * sizeof(int), input_array_a+start, 0, NULL, NULL);
+    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_a, CL_TRUE, 0,(array_size) * sizeof(int), input_array_a+start, 0, NULL, NULL);
     if (status != CL_SUCCESS)
         printf("Could not write input array a buffer to the device.\n");
     else printf("Buffer a written successfully!\n");
 
-    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_b, CL_TRUE, 0, (array_size+1) * sizeof(int), input_array_b+start, 0, NULL, NULL);
+    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_b, CL_TRUE, 0, (array_size) * sizeof(int), input_array_b+start, 0, NULL, NULL);
     if (status != CL_SUCCESS)
         printf("Could not write input array b buffer to the device.\n");
     else printf("Buffer a written successfully!\n");
 
-    status = clEnqueueWriteBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size+1) * sizeof(int), result_array_c+start, 0, NULL, NULL);
+    status = clEnqueueWriteBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size) * sizeof(int), result_array_c+start, 0, NULL, NULL);
     if (status != CL_SUCCESS)
         printf("Could not write result array buffer to the device.\n");
     else printf("Buffer a written successfully!\n");
@@ -316,7 +317,7 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int
         printf("Could not set kernel argument 2.\n");
     else printf("Kernel argument 2 set succesfully!\n");
 
-    status = clSetKernelArg(kernel, 3, sizeof(int), (void*)&end);
+    status = clSetKernelArg(kernel, 3, sizeof(int), (void*)&array_size);
     if (status != CL_SUCCESS)
         printf("Could not set kernel argument 3.\n");
     else printf("Kernel argument 3 set succesfully!\n");
@@ -337,13 +338,13 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int
     else printf("Task finished succesfully!\n");
 
     // READ FROM DEVICE
-    status = clEnqueueReadBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size+1) * sizeof(int), result_array_c+start, 0, NULL, NULL);
+    status = clEnqueueReadBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size) * sizeof(int), result_array_c+start, 0, NULL, NULL);
     if (status != CL_SUCCESS)
         printf("Could not read from buffer.\n");
     else printf("Read to result array c succesfully!\n");
 
      //DISPLAY RESULTS
-    for (int i = start; i < end+1; i++)
+    for (int i = start; i < array_size; i++)
     {
         if (input_array_a && input_array_b && result_array_c)
             printf("%02d ^ %02d = %d\n", input_array_a[i], input_array_b[i], result_array_c[i]);
@@ -383,7 +384,7 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
     if (!PercentageSize_ProcessingPart_Valid(array_size_percentage, processing_part)) return;
     if (!FullPercentageSize_Equal_FullProcessingPart(&array_size_percentage, &processing_part)) return;
 
-    int array_size = (int)ceil((C_ARRAY_SIZE * array_size_percentage) / 100.0); // Calculate number of elements to process based on percentage provided
+    int array_size = (ceil)((C_ARRAY_SIZE * array_size_percentage) / 100.0); // Calculate number of elements to process based on percentage provided
     printf("Array size to calc is %d\n ", array_size);
     int start; int end;
     switch (processing_part)
@@ -396,6 +397,7 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
     case SECOND_HALF_OF_ARRAY:
         start = C_ARRAY_SIZE - array_size;
         end = C_ARRAY_SIZE - 1;
+        array_size = C_ARRAY_SIZE - start;
         break;
 
     case FULL_ARRAY:
@@ -403,7 +405,7 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
         end = C_ARRAY_SIZE - 1;
         break;
     }
-    printf("STarts at %d and ends at %d", start, end);
+    printf("Starts at %d and ends at %d", start, end);
 
 
     // PLATFORMS
@@ -509,13 +511,13 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
     }
     else printf("Queue created successfully!\n");
 
-    size_t local_size = 2, global_size = (size_t)ceil(C_ARRAY_SIZE / (float)local_size) * local_size;
+    size_t local_size = 2, global_size = (size_t)ceil(array_size / (float)local_size) * local_size;
     printf("Local size: %zu\nGlobal size: %zu\n", local_size, global_size);
     system("pause");
     system("cls");
 
     // CREATE BUFFER
-    cl_mem clmem_input_array_a = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * array_size + 1, NULL, &status);
+    cl_mem clmem_input_array_a = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
     if (status != CL_SUCCESS)
     {
         printf("Could not create buffer for result array.\n");
@@ -532,7 +534,7 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
     }
     else printf("Buffer a created successfully!\n");
 
-    cl_mem clmem_input_array_b = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * array_size + 1, NULL, &status);
+    cl_mem clmem_input_array_b = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
     if (status != CL_SUCCESS)
     {
         printf("Could not create buffer for result array.\n");
@@ -550,7 +552,7 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
     }
     else printf("Buffer b created successfully!\n");
 
-    cl_mem clmem_result_array_c = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * array_size + 1, NULL, &status);
+    cl_mem clmem_result_array_c = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
     if (status != CL_SUCCESS)
     {
         printf("Could not create buffer for result array.\n");
@@ -570,17 +572,17 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
     else printf("Buffer c created successfully!\n");
 
     // WRITE BUFFER TO DEVICE MEMORY
-    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_a, CL_TRUE, 0, array_size * sizeof(int), input_array_a + start, 0, NULL, NULL);
+    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_a, CL_TRUE, 0, (array_size) * sizeof(int), input_array_a + start, 0, NULL, NULL);
     if (status != CL_SUCCESS)
         printf("Could not write input array a buffer to the device.\n");
     else printf("Buffer a written successfully!\n");
 
-    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_b, CL_TRUE, 0, array_size * sizeof(int), input_array_b + start, 0, NULL, NULL);
+    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_b, CL_TRUE, 0, (array_size) * sizeof(int), input_array_b + start, 0, NULL, NULL);
     if (status != CL_SUCCESS)
         printf("Could not write input array b buffer to the device.\n");
     else printf("Buffer a written successfully!\n");
 
-    status = clEnqueueWriteBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, array_size * sizeof(int), result_array_c + start, 0, NULL, NULL);
+    status = clEnqueueWriteBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size) * sizeof(int), result_array_c + start, 0, NULL, NULL);
     if (status != CL_SUCCESS)
         printf("Could not write result array buffer to the device.\n");
     else printf("Buffer a written successfully!\n");
@@ -601,7 +603,7 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
         printf("Could not set kernel argument 2.\n");
     else printf("Kernel argument 2 set succesfully!\n");
 
-    status = clSetKernelArg(kernel, 3, sizeof(int), (void*)&C_ARRAY_SIZE);
+    status = clSetKernelArg(kernel, 3, sizeof(int), (void*)&array_size);
     if (status != CL_SUCCESS)
         printf("Could not set kernel argument 3.\n");
     else printf("Kernel argument 3 set succesfully!\n");
@@ -622,13 +624,13 @@ void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int
     else printf("Task finished succesfully!\n");
 
     // READ FROM DEVICE
-    status = clEnqueueReadBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, array_size * sizeof(int), result_array_c + start, 0, NULL, NULL);
+    status = clEnqueueReadBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size) * sizeof(int), result_array_c + start, 0, NULL, NULL);
     if (status != CL_SUCCESS)
         printf("Could not read from buffer.\n");
     else printf("Read to result array c succesfully!\n");
 
     //DISPLAY RESULTS
-    for (int i = start; i < end; i++)
+    for (int i = start; i < array_size; i++)
     {
         if (input_array_a && input_array_b && result_array_c)
             printf("%02d ^ %02d = %d\n", input_array_a[i], input_array_b[i], result_array_c[i]);
