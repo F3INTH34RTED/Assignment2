@@ -9,32 +9,38 @@
 #define __CRT__SECURE__NO__WARNINGS
 #endif // __APPLE__
 #pragma comment (lib, "OpenCL.lib")
-#define ARRAY_SIZE 50
+#define ARRAY_SIZE 49
 const unsigned int C_ARRAY_SIZE = ARRAY_SIZE;
 
 enum { bool_false, bool_true };
 enum { FIRST_HALF_OF_ARRAY = 1, SECOND_HALF_OF_ARRAY, FULL_ARRAY };
 
-void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int* input_array_a, int* input_array_b, int* result_array_c);
-void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int* input_array_a, int* input_array_b, int* result_array_c);
+void Execute_On_Cpu_or_Gpu(int cpu_or_gpu,int* input_array_a, int* input_array_b, int* result_array_c);
+
+
+void Execute_On_Cpu_and_Gpu(unsigned int array_size_percentage_CPU, int processing_part_CPU, unsigned int array_size_percentage_GPU, int processing_part_GPU, int* input_array_a, int* input_array_b, int* result_array_c);
 
 int PercentageSize_ProcessingPart_Valid(unsigned int array_size_percentage, int processing_part);
 int FullPercentageSize_Equal_FullProcessingPart(unsigned int* array_size_percentage, int* processing_part);
 
+int checkForCPU();
+int checkForGPU();
+
+
+
+//device and platform id for cpu
+cl_device_id cpu_id;
+cl_platform_id cpu_platform;
+
+// device and platform id for gpu
+cl_device_id gpu_id;
+cl_platform_id gpu_platform;
+
 cl_uint Get_Num_Platforms();
 cl_platform_id* Get_Platforms();
-void Display_All_Platform_Info(const cl_platform_id* platforms);
+
 void Display_Specific_Platform_Info(const cl_platform_id* platforms, const cl_uint index);
-
-
-
-cl_uint Get_Num_Devices(const cl_platform_id* platforms, const cl_uint platform_index);
-cl_device_id* Get_Devices(cl_platform_id* platforms, const cl_uint platform_index);
-void Display_All_Device_Info(const cl_device_id* devices, const cl_platform_id* platforms, const cl_uint platform_index);
 void Display_Specific_Device_Info(const cl_device_id* devices, const cl_uint device_index);
-
-//void Create_Context(cl_context* context, const cl_platform_id* platforms, const cl_device_id* devices, const cl_uint platform_index);
-
 char* Get_Kernel_File(char* file_name);
 
 int main()
@@ -62,11 +68,51 @@ int main()
         }
     }
 
-    Execute_On_Cpu(25, FIRST_HALF_OF_ARRAY, input_array_a, input_array_b, result_array_c);
-    system("pause");
-    system("cls");
-    Execute_On_Gpu(75, SECOND_HALF_OF_ARRAY, input_array_a, input_array_b, result_array_c);
+    int choice;
+    printf("Press 1 to exponentiate arrays using threads\n");
+    printf("Press 2 to exponentiate arrays using GPU only\n");
+    printf("Press 3 to exponentiate arrays using CPU only\n");
+    printf("Press 4 to exponentiate arrays using 25%% of CPU and 75%% of GPU\n");
+    printf("Press 5 to exponentiate arrays using 50%% of CPU and 50%% of GPU\n");
+    printf("Press 6 to exponentiate arrays using 75%% of CPU and 25%% of GPU\n");
+    printf("Enter your choice:\n");
+    scanf("%d", &choice);
 
+    switch (choice) {
+    case 1:
+    {
+        //thread func 
+        break;
+    }
+    case 2:
+    {
+        Execute_On_Cpu_or_Gpu(1, input_array_a, input_array_b, result_array_c);
+        break;
+    }
+    case 3:
+    {
+        Execute_On_Cpu_or_Gpu(0, input_array_a, input_array_b, result_array_c);
+        break;
+    }
+    case 4:
+    {
+        Execute_On_Cpu_and_Gpu(25,FIRST_HALF_OF_ARRAY,75,SECOND_HALF_OF_ARRAY, input_array_a, input_array_b, result_array_c);
+        break;
+    }
+    case 5:
+    {
+        Execute_On_Cpu_and_Gpu(50, FIRST_HALF_OF_ARRAY, 50, SECOND_HALF_OF_ARRAY, input_array_a, input_array_b, result_array_c);
+        break;
+    }
+    case 6:
+    {
+        Execute_On_Cpu_and_Gpu(75, FIRST_HALF_OF_ARRAY, 25, SECOND_HALF_OF_ARRAY, input_array_a, input_array_b, result_array_c);
+        break;
+    }
+    default:
+        printf("wrong Input\n");
+   
+    }
     free(input_array_a);
     free(input_array_b);
     free(result_array_c);
@@ -82,9 +128,29 @@ int main()
 * Description: Calculates the total number of elements to be executed in the cpu/gpu (array_size_percentage)
 and then executes the elements based on the processing_part (first half, second half, or the full array).
 */
-void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int* input_array_a, int* input_array_b, int* result_array_c)
-{
-    printf("EXECUTING ON CPU\n");
+
+void Execute_On_Cpu_and_Gpu(unsigned int array_size_percentage_CPU, int processing_part_CPU, unsigned int array_size_percentage_GPU, int processing_part_GPU, int* input_array_a, int* input_array_b, int* result_array_c) {
+    //check if both CPU and GPU are enabled
+    //check func stores platform and device id in global params if detected
+    if (checkForCPU() == 0) {
+        printf("NO CPU DETECTED");
+        return;
+    }
+    if (checkForGPU() == 0) {
+        printf("NO GPU DETECTED");
+        return;
+    }
+    
+    
+    // Check validity of parameters for CPU
+    if (!PercentageSize_ProcessingPart_Valid(array_size_percentage_CPU, processing_part_CPU)) return;
+    if (!FullPercentageSize_Equal_FullProcessingPart(&array_size_percentage_CPU, &processing_part_CPU)) return;
+    
+    // Check validity of parameters for GPU
+    if (!PercentageSize_ProcessingPart_Valid(array_size_percentage_GPU, processing_part_GPU)) return;
+    if (!FullPercentageSize_Equal_FullProcessingPart(&array_size_percentage_GPU, &processing_part_GPU)) return;
+    
+    printf("EXECUTING %d%% on CPU and %d%% on GPU \n",array_size_percentage_CPU,array_size_percentage_GPU);
     printf("Arrays:\n");
     for (int i = 0; i < ARRAY_SIZE; i++)
     {
@@ -94,557 +160,523 @@ void Execute_On_Cpu(unsigned int array_size_percentage, int processing_part, int
     system("pause");
     system("cls");
 
-    // Check validity of parameters
-    if (!PercentageSize_ProcessingPart_Valid(array_size_percentage, processing_part)) return;
-    if (!FullPercentageSize_Equal_FullProcessingPart(&array_size_percentage, &processing_part)) return;
 
-    int array_size = (int)((C_ARRAY_SIZE * array_size_percentage) / 100.0); // Calculate number of elements to process based on percentage provided
-    printf("Array size to calc is %d\n ", array_size);
-    int start; int end;
-    switch (processing_part)
-    {
-        
-    case FIRST_HALF_OF_ARRAY:
-        start = 0;
-        end = array_size-1;
-        break;
-    case SECOND_HALF_OF_ARRAY:
-        start = C_ARRAY_SIZE-array_size ;
-        end = C_ARRAY_SIZE-1;
-        array_size = C_ARRAY_SIZE - start;
-        break;
-
-    case FULL_ARRAY:
-        start = 0;
-        end = C_ARRAY_SIZE - 1;
-        break;
-    }
-    printf("Starts at %d and ends at %d", start, end);
+    // Calculate number of elements to process based on percentage provided for CPU
 
 
-    // PLATFORMS
-    cl_platform_id* platforms = Get_Platforms();
-    cl_uint platform_index = 1; // The appropriate platform for CPU must be detected accordingly.
-    Display_All_Platform_Info(platforms);
+    int array_size_CPU = (int)((C_ARRAY_SIZE * array_size_percentage_CPU) / 100.0); 
+    int start_CPU; int end_CPU;
 
-    // DEVICES
-    cl_device_id* devices = Get_Devices(platforms, platform_index);
-    /*
-    * If there is no integrated gpu, then there will only be 1 cpu device and hence, device_index will be 0.
-    * If there are n integrated gpus, total devices will be (n+1) devices. Hence, cpu will be at index (n-1)
-    */
-    cl_uint device_index = Get_Num_Devices(platforms, platform_index) == 1 ? 0 : Get_Num_Devices(platforms, platform_index) - 1;
-    Display_All_Device_Info(devices, platforms, platform_index);
-
-    // CREATE CONTEXT
-    cl_int status = 0;
-    cl_context context = clCreateContext(0, Get_Num_Devices(platforms, platform_index), devices, NULL, NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create a context.\n");
-        free(devices);
-        free(platforms);
-        exit(-1);
-    }
-    else printf("Context created successfuly\n");
-
-    // READ KERNEL FILE
-    char* kernel_file = Get_Kernel_File("Kernels.cl");
-    if (kernel_file == NULL)
-    {
-        printf("Could not find the OpenCL kernel file.\n");
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-    else printf("Kernel file successfully read!\n");
-
-    //CREATE AND BUILD PROGRAM
-    cl_program program = clCreateProgramWithSource(context, 1, (const char**)&kernel_file, NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create the program.\n");
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-
-    status = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create the program.\n");
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-    else printf("Program created and built successfully!\n");
-
-    // CREATE KERNEL
-    cl_kernel kernel = clCreateKernel(program, "exponentiateArray", &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create a kernel.\n");
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-    else printf("Kernel created successfully!\n");
-
-    // CREATE QUEUE
-    cl_command_queue commandQ = clCreateCommandQueue(context, devices[device_index], 0, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create a command queue.\n");
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-    else printf("Queue created successfully!\n");
-
-    size_t local_size = 2, global_size = (size_t)ceil(array_size / (float)local_size) * local_size;
-    printf("Local size: %zu\nGlobal size: %zu\n", local_size, global_size);
-    system("pause");
-    system("cls");
-
-    // CREATE BUFFER
-    cl_mem clmem_input_array_a = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create buffer for result array.\n");
-        clReleaseCommandQueue(commandQ);
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-    else printf("Buffer a created successfully!\n");
-
-    cl_mem clmem_input_array_b = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create buffer for result array.\n");
-        clReleaseMemObject(clmem_input_array_a);
-        clReleaseCommandQueue(commandQ);
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-    else printf("Buffer b created successfully!\n");
-
-    cl_mem clmem_result_array_c = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create buffer for result array.\n");
-        clReleaseMemObject(clmem_input_array_a);
-        clReleaseMemObject(clmem_input_array_b);
-        clReleaseCommandQueue(commandQ);
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-    else printf("Buffer c created successfully!\n");
-
-    // WRITE BUFFER TO DEVICE MEMORY
-    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_a, CL_TRUE, 0,(array_size) * sizeof(int), input_array_a+start, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not write input array a buffer to the device.\n");
-    else printf("Buffer a written successfully!\n");
-
-    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_b, CL_TRUE, 0, (array_size) * sizeof(int), input_array_b+start, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not write input array b buffer to the device.\n");
-    else printf("Buffer a written successfully!\n");
-
-    status = clEnqueueWriteBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size) * sizeof(int), result_array_c+start, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not write result array buffer to the device.\n");
-    else printf("Buffer a written successfully!\n");
-
-    // SET KERNEL ARGUMENTS
-    status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clmem_input_array_a);
-    if (status != CL_SUCCESS)
-        printf("Could not set kernel argument 0.\n");
-    else printf("Kernel argument 0 set succesfully!\n");
-
-    status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&clmem_input_array_b);
-    if (status != CL_SUCCESS)
-        printf("Could not set kernel argument 1.\n");
-    else printf("Kernel argument 1 set succesfully!\n");
-
-    status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clmem_result_array_c);
-    if (status != CL_SUCCESS)
-        printf("Could not set kernel argument 2.\n");
-    else printf("Kernel argument 2 set succesfully!\n");
-
-    status = clSetKernelArg(kernel, 3, sizeof(int), (void*)&array_size);
-    if (status != CL_SUCCESS)
-        printf("Could not set kernel argument 3.\n");
-    else printf("Kernel argument 3 set succesfully!\n");
-
-    system("pause");
-    system("cls");
-
-    // EXECUTE TASK
-    status = clEnqueueNDRangeKernel(commandQ, kernel, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not enqeue task to the kernel.\n");
-    else printf("Task enqueued succesfully!\n");
-
-    // FINISH TASK
-    status = clFinish(commandQ);
-    if (status != CL_SUCCESS)
-        printf("Could not finish executing the task.\n");
-    else printf("Task finished succesfully!\n");
-
-    // READ FROM DEVICE
-    status = clEnqueueReadBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size) * sizeof(int), result_array_c+start, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not read from buffer.\n");
-    else printf("Read to result array c succesfully!\n");
-
-     //DISPLAY RESULTS
-    for (int i = start; i < array_size; i++)
-    {
-        if (input_array_a && input_array_b && result_array_c)
-            printf("%02d ^ %02d = %d\n", input_array_a[i], input_array_b[i], result_array_c[i]);
-    }
-
-    clReleaseMemObject(clmem_input_array_a);
-    clReleaseMemObject(clmem_input_array_b);
-    clReleaseMemObject(clmem_result_array_c);
-    clReleaseCommandQueue(commandQ);
-    clReleaseKernel(kernel);
-    clReleaseProgram(program);
-    clReleaseContext(context);
-    free(devices);
-    free(platforms);
-}
-
-/*
-* Requirements: Array size percentage (0% - 100%), FIRST_HALF(1) or SECOND_HALF(2) or FULL_ARRAY(3), input array 1, input array 2, result array
-* Usage: Execute_On_Cpu(int 0-100, int 1-3)
-* ------------------------------------------
-* Description: Calculates the total number of elements to be executed in the cpu/gpu (array_size_percentage)
-and then executes the elements based on the processing_part (first half, second half, or the full array).
-*/
-void Execute_On_Gpu(unsigned int array_size_percentage, int processing_part, int* input_array_a, int* input_array_b, int* result_array_c)
-{
-    printf("EXECUTING ON GPU\n");
-    printf("Arrays:\n");
-    for (int i = 0; i < ARRAY_SIZE; i++)
-    {
-        if (input_array_a && input_array_b && result_array_c)
-            printf("a[%04d] = %04d\tb[%04d] = %04d\tc[%04d] = %04d\n", i, input_array_a[i], i, input_array_b[i], i, result_array_c[i]);
-    }
-    system("pause");
-    system("cls");
-
-    // Check validity of parameters
-    if (!PercentageSize_ProcessingPart_Valid(array_size_percentage, processing_part)) return;
-    if (!FullPercentageSize_Equal_FullProcessingPart(&array_size_percentage, &processing_part)) return;
-
-    int array_size = (ceil)((C_ARRAY_SIZE * array_size_percentage) / 100.0); // Calculate number of elements to process based on percentage provided
-    printf("Array size to calc is %d\n ", array_size);
-    int start; int end;
-    switch (processing_part)
+    switch (processing_part_CPU)
     {
 
     case FIRST_HALF_OF_ARRAY:
-        start = 0;
-        end = array_size - 1;
+        start_CPU = 0;
+        end_CPU = array_size_CPU - 1;
         break;
     case SECOND_HALF_OF_ARRAY:
-        start = C_ARRAY_SIZE - array_size;
-        end = C_ARRAY_SIZE - 1;
-        array_size = C_ARRAY_SIZE - start;
+        start_CPU = C_ARRAY_SIZE - array_size_CPU;
+        end_CPU = C_ARRAY_SIZE - 1;
+        array_size_CPU = C_ARRAY_SIZE - start_CPU;
         break;
 
     case FULL_ARRAY:
-        start = 0;
-        end = C_ARRAY_SIZE - 1;
+        start_CPU = 0;
+        end_CPU = C_ARRAY_SIZE - 1;
         break;
     }
-    printf("Starts at %d and ends at %d", start, end);
+ 
 
+    // Calculate number of elements to process based on percentage provided for GPU
+    int array_size_GPU = (int)(ceil)((C_ARRAY_SIZE * array_size_percentage_GPU) / 100.0);
 
-    // PLATFORMS
-    cl_platform_id* platforms = Get_Platforms();
-    cl_uint platform_index = 0; // The appropriate platform for CPU must be detected accordingly.
-    Display_All_Platform_Info(platforms);
-
-    // DEVICES
-    cl_device_id* devices = Get_Devices(platforms, platform_index);
-    /*
-    * If there is no integrated gpu, then there will only be 1 cpu device and hence, device_index will be 0.
-    * If there are n integrated gpus, total devices will be (n+1) devices. Hence, cpu will be at index (n-1)
-    */
-    cl_uint device_index = Get_Num_Devices(platforms, platform_index) == 1 ? 0 : Get_Num_Devices(platforms, platform_index) - 1;
-    Display_All_Device_Info(devices, platforms, platform_index);
-
-    // CREATE CONTEXT
-    cl_int status = 0;
-    cl_context context = clCreateContext(0, Get_Num_Devices(platforms, platform_index), devices, NULL, NULL, &status);
-    if (status != CL_SUCCESS)
+   
+    int start_GPU; int end_GPU;
+    switch (processing_part_GPU)
     {
-        printf("Could not create a context.\n");
-        free(devices);
-        free(platforms);
-        exit(-1);
-    }
-    else printf("Context created successfuly\n");
 
-    // READ KERNEL FILE
-    char* kernel_file = Get_Kernel_File("Kernels.cl");
-    if (kernel_file == NULL)
-    {
-        printf("Could not find the OpenCL kernel file.\n");
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
-    }
-    else printf("Kernel file successfully read!\n");
+    case FIRST_HALF_OF_ARRAY:
+        start_GPU = 0;
+        end_GPU = array_size_GPU - 1;
+        break;
+    case SECOND_HALF_OF_ARRAY:
+        start_GPU = C_ARRAY_SIZE - array_size_GPU;
+        end_GPU = C_ARRAY_SIZE - 1;
+        array_size_GPU = C_ARRAY_SIZE - start_GPU;
+        break;
 
-    //CREATE AND BUILD PROGRAM
-    cl_program program = clCreateProgramWithSource(context, 1, (const char**)&kernel_file, NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create the program.\n");
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
+    case FULL_ARRAY:
+        start_GPU = 0;
+        end_GPU = C_ARRAY_SIZE - 1;
+        break;
     }
 
-    status = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create the program.\n");
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
+
+    printf("CPU exponentiates %d elements while GPU exponentiates %d \n\n", array_size_CPU, array_size_GPU);
+
+    //initialse tings GPU
+    cl_context context_GPU;
+    cl_command_queue commandQueue_GPU;
+    cl_mem buffer_GPU1;
+    cl_mem buffer_GPU2;
+    cl_mem result_buffer_GPU;
+
+    // initialise things CPU
+    cl_context context_CPU;
+    cl_command_queue commandQueue_CPU;
+    cl_mem buffer_CPU1;
+    cl_mem buffer_CPU2;
+    cl_mem result_buffer_CPU;
+
+    cl_int error;
+
+
+    //create context (interface for device)
+    // 1 device, give the device id and set error code
+    context_GPU = clCreateContext(NULL, 1, &gpu_id, NULL, NULL, &error);
+
+    if (error != 0) {
+        printf("Error in getting context. Code %d\n", error);
     }
-    else printf("Program created and built successfully!\n");
 
-    // CREATE KERNEL
-    cl_kernel kernel = clCreateKernel(program, "exponentiateArray", &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create a kernel.\n");
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
+    //create a command queue to queue in commands for GPU
+    //1 context and deviceID for each queue and set error code
+    commandQueue_GPU = clCreateCommandQueue(context_GPU, gpu_id, CL_QUEUE_PROFILING_ENABLE, &error);
+
+    if (error != 0) {
+        printf("Error in getting command queue. Code %d\n", error);
     }
-    else printf("Kernel created successfully!\n");
 
-    // CREATE QUEUE
-    cl_command_queue commandQ = clCreateCommandQueue(context, devices[device_index], 0, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create a command queue.\n");
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
+
+    // allocate memory in device for input arrays for GPU
+    //like malloc, allocates space in device
+    buffer_GPU1 = clCreateBuffer(context_GPU, CL_MEM_READ_WRITE, sizeof(int) * (array_size_GPU), NULL, &error);
+
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
     }
-    else printf("Queue created successfully!\n");
+    buffer_GPU2 = clCreateBuffer(context_GPU, CL_MEM_READ_WRITE, sizeof(int) * (array_size_GPU), NULL, &error);
 
-    size_t local_size = 2, global_size = (size_t)ceil(array_size / (float)local_size) * local_size;
-    printf("Local size: %zu\nGlobal size: %zu\n", local_size, global_size);
-    system("pause");
-    system("cls");
-
-    // CREATE BUFFER
-    cl_mem clmem_input_array_a = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create buffer for result array.\n");
-        clReleaseCommandQueue(commandQ);
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
     }
-    else printf("Buffer a created successfully!\n");
+    result_buffer_GPU = clCreateBuffer(context_GPU, CL_MEM_READ_WRITE, sizeof(int) * (array_size_GPU), NULL, &error);
 
-    cl_mem clmem_input_array_b = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create buffer for result array.\n");
-        clReleaseMemObject(clmem_input_array_a);
-        clReleaseCommandQueue(commandQ);
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
     }
-    else printf("Buffer b created successfully!\n");
+   
 
-    cl_mem clmem_result_array_c = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(int) * (array_size), NULL, &status);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not create buffer for result array.\n");
-        clReleaseMemObject(clmem_input_array_a);
-        clReleaseMemObject(clmem_input_array_b);
-        clReleaseCommandQueue(commandQ);
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseContext(context);
-        free(devices);
-        free(platforms);
-        free(input_array_a);
-        free(input_array_b);
-        free(result_array_c);
-        exit(-1);
+  
+
+    //create context (interface for device)for CPU
+    // 1 device, give the device id and set error code
+    context_CPU = clCreateContext(NULL, 1, &cpu_id, NULL, NULL, &error);
+
+    if (error != 0) {
+        printf("Error in getting context. Code %d\n", error);
     }
-    else printf("Buffer c created successfully!\n");
 
-    // WRITE BUFFER TO DEVICE MEMORY
-    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_a, CL_TRUE, 0, (array_size) * sizeof(int), input_array_a + start, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not write input array a buffer to the device.\n");
-    else printf("Buffer a written successfully!\n");
+    //create a command queue to queue in commands for CPU
+    //1 context and deviceID for each queue and set error code
+    commandQueue_CPU = clCreateCommandQueue(context_CPU, cpu_id, CL_QUEUE_PROFILING_ENABLE, &error);
 
-    status = clEnqueueWriteBuffer(commandQ, clmem_input_array_b, CL_TRUE, 0, (array_size) * sizeof(int), input_array_b + start, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not write input array b buffer to the device.\n");
-    else printf("Buffer a written successfully!\n");
+    if (error != 0) {
+        printf("Error in getting command queue. Code %d\n", error);
+    }
 
-    status = clEnqueueWriteBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size) * sizeof(int), result_array_c + start, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not write result array buffer to the device.\n");
-    else printf("Buffer a written successfully!\n");
 
-    // SET KERNEL ARGUMENTS
-    status = clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&clmem_input_array_a);
-    if (status != CL_SUCCESS)
-        printf("Could not set kernel argument 0.\n");
-    else printf("Kernel argument 0 set succesfully!\n");
+    // allocate memory in device for input arrays in CPU
+    //like malloc, allocates space in device
+    buffer_CPU1 = clCreateBuffer(context_CPU, CL_MEM_READ_WRITE, sizeof(int) * (array_size_CPU), NULL, &error);
 
-    status = clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&clmem_input_array_b);
-    if (status != CL_SUCCESS)
-        printf("Could not set kernel argument 1.\n");
-    else printf("Kernel argument 1 set succesfully!\n");
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
+    }
 
-    status = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&clmem_result_array_c);
-    if (status != CL_SUCCESS)
-        printf("Could not set kernel argument 2.\n");
-    else printf("Kernel argument 2 set succesfully!\n");
+    buffer_CPU2 = clCreateBuffer(context_CPU, CL_MEM_READ_WRITE, sizeof(int) * (array_size_CPU), NULL, &error);
 
-    status = clSetKernelArg(kernel, 3, sizeof(int), (void*)&array_size);
-    if (status != CL_SUCCESS)
-        printf("Could not set kernel argument 3.\n");
-    else printf("Kernel argument 3 set succesfully!\n");
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
+    }
+    result_buffer_CPU = clCreateBuffer(context_CPU, CL_MEM_READ_WRITE, sizeof(int) * (array_size_CPU), NULL, &error);
 
-    system("pause");
-    system("cls");
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
+    }
 
-    // EXECUTE TASK
-    status = clEnqueueNDRangeKernel(commandQ, kernel, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not enqeue task to the kernel.\n");
-    else printf("Task enqueued succesfully!\n");
+    // 4 events for writing
+    cl_event events_for_writing_CPU[2];
+    cl_event events_for_writing_GPU[2];
+    //transfer input arrays from ram to vram by copying array to buffer in GPU
+    error = clEnqueueWriteBuffer(commandQueue_GPU, buffer_GPU1, CL_FALSE, 0, sizeof(int) * (array_size_GPU), input_array_a+start_GPU, 0, NULL, &events_for_writing_GPU[0]);
 
-    // FINISH TASK
-    status = clFinish(commandQ);
-    if (status != CL_SUCCESS)
-        printf("Could not finish executing the task.\n");
-    else printf("Task finished succesfully!\n");
+    if (error != 0) {
+        printf("Error in copying array into buffer GPU. Code %d\n", error);
+    }
 
-    // READ FROM DEVICE
-    status = clEnqueueReadBuffer(commandQ, clmem_result_array_c, CL_TRUE, 0, (array_size) * sizeof(int), result_array_c + start, 0, NULL, NULL);
-    if (status != CL_SUCCESS)
-        printf("Could not read from buffer.\n");
-    else printf("Read to result array c succesfully!\n");
+    error = clEnqueueWriteBuffer(commandQueue_GPU, buffer_GPU2, CL_FALSE, 0, sizeof(int) * (array_size_GPU), input_array_b+start_GPU, 0, NULL, &events_for_writing_GPU[1]);
+
+    if (error != 0) {
+        printf("Error in copying array into buffer GPU. Code %d\n", error);
+    }
+
+
+    //transfer input array from ram to vram by copying array to buffer in CPU
+    error = clEnqueueWriteBuffer(commandQueue_CPU, buffer_CPU1, CL_TRUE, 0, sizeof(int) * (array_size_CPU), input_array_a + start_CPU, 0, NULL, &events_for_writing_CPU[0]);
+
+    if (error != 0) {
+        printf("Error in copying array into buffer CPU. Code %d\n", error);
+    }
+
+    error = clEnqueueWriteBuffer(commandQueue_CPU, buffer_CPU2, CL_TRUE, 0, sizeof(int) * (array_size_CPU), input_array_b + start_CPU, 0, NULL, &events_for_writing_CPU[1]);
+
+    if (error != 0) {
+        printf("Error in copying array into buffer CPU. Code %d\n", error);
+    }
+
+    //guarantees that all enqueued commands from CPU and GPU are submitted
+    clFlush(commandQueue_GPU);
+    clFlush(commandQueue_CPU);
+
+
+    //.......
+     /*  create program from source */
+    char* exponentiate_array_program = Get_Kernel_File("Kernels.cl");
+    /*  first, check if the file exists, otherwise, the function returns NULL */
+    if (exponentiate_array_program == NULL)
+    {
+        printf("Could not read an OpenCL from the specified file \n");
+    }
+
+
+    cl_kernel kernel_GPU;
+    cl_program program_GPU;
+
+    program_GPU = clCreateProgramWithSource(context_GPU, 1, (const char**)&exponentiate_array_program, NULL, &error);
+
+    if (error != 0) {
+        printf("Error in creating program. Code %d\n", error);
+    }
+
+    //build program
+    clBuildProgram(program_GPU, 0, NULL, NULL, NULL, NULL);
+
+    //create kernel in GPU for func
+    kernel_GPU = clCreateKernel(program_GPU, "exponentiateArray", &error);
+
+    if (error != 0) {
+        printf("Error in creating kernel. Code %d\n", error);
+    }
+
+   
+    cl_kernel kernel_CPU;
+    cl_program program_CPU;
+
+   
+
+    /*  second, try to create a program from the content of the file */
+   program_CPU = clCreateProgramWithSource(context_CPU, 1, (const char**)&exponentiate_array_program, NULL, &error);
+    if (error != 0)
+    {
+        printf("Error in creating program. Code %d\n", error);
+    }
+
+
+    //build program
+    clBuildProgram(program_CPU, 0, NULL, NULL, NULL, NULL);
+
+    //create kernel in CPU for your func
+    kernel_CPU = clCreateKernel(program_CPU, "exponentiateArray", &error);
+
+    if (error != 0) {
+        printf("Error in creating kernel. Code %d\n", error);
+    }
+
+
+
+    //set kernel arguments
+    clSetKernelArg(kernel_GPU, 0, sizeof(cl_mem), &buffer_GPU1);
+    clSetKernelArg(kernel_GPU, 1, sizeof(cl_mem), &buffer_GPU2);
+    clSetKernelArg(kernel_GPU, 2, sizeof(cl_mem), &result_buffer_GPU);
+    clSetKernelArg(kernel_GPU, 3, sizeof(int), &array_size_GPU);
+
+    clSetKernelArg(kernel_CPU, 0, sizeof(cl_mem), &buffer_CPU1);
+    clSetKernelArg(kernel_CPU, 1, sizeof(cl_mem), &buffer_CPU2);
+    clSetKernelArg(kernel_CPU, 2, sizeof(cl_mem), &result_buffer_CPU);
+    clSetKernelArg(kernel_CPU, 3, sizeof(int), &array_size_CPU);
+
+    size_t local_CPU = 10;
+    //global has to be multiple of local so need to divide and multiply
+    size_t global_CPU = ceil(array_size_CPU) * local_CPU;
+
+    size_t local_GPU = 10;
+    //global has to be multiple of local so need to divide and multiply
+    size_t global_GPU = ceil(array_size_GPU) * local_GPU;
+
+
+    // 2 events for computing
+    cl_event events_for_computing[2];
+
+    //start work at this point, numbr of dimensions 1, waits for 1 event that is writing to buffer, starts event for computing
+    error = clEnqueueNDRangeKernel(commandQueue_GPU, kernel_GPU, 1, NULL, &global_GPU, &local_GPU, 2, events_for_writing_GPU, &events_for_computing[0]);
+
+    if (error != 0) {
+        printf("Error in executing kernel. Code %d\n", error);
+    }
+
+
+    //start work at this point, numbr of dimensions 1, waits for 1 event that is writing to buffer, starts event for computing
+    error = clEnqueueNDRangeKernel(commandQueue_CPU, kernel_CPU, 1, NULL, &global_CPU, &local_CPU, 2, events_for_writing_CPU, &events_for_computing[1]);
+
+    if (error != 0) {
+        printf("Error in executing kernel CPU. Code %d\n", error);
+    }
+
+
+    //wait for gpu to finish work before actually reading the result buffer
+    error = clFinish(commandQueue_GPU);
+
+    if (error != 0) {
+        printf("Error in finishing work from GPU. Code %d\n", error);
+    }
+    //wait for cpu to finish work before actually reading the result buffer
+    error = clFinish(commandQueue_CPU);
+
+    if (error != 0) {
+        printf("Error in finishing work from CPU. Code %d\n", error);
+    }
+
+    //calculate the execution time for GPU
+    cl_ulong start, end;
+
+    clGetEventProfilingInfo(events_for_computing[0], CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
+    clGetEventProfilingInfo(events_for_computing[0], CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
+
+    printf("Time taken to exponentiate array in GPU %f ms\n", (end - start) / 1000000.0);
+
+
+    //calculate the execution time for CPU
+
+    cl_ulong start2, end2;
+
+    clGetEventProfilingInfo(events_for_computing[1], CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start2, NULL);
+    clGetEventProfilingInfo(events_for_computing[1], CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end2, NULL);
+
+    printf("Time taken to exponentiate array in CPU %f ms\n", (end2 - start2) / 1000000.0);
+
+
+    //read output from vram to ram
+
+    //read contents of buffer GPU into result array, 0 events, 0 offset
+    clEnqueueReadBuffer(commandQueue_GPU, result_buffer_GPU, CL_FALSE, 0, sizeof(int) * (array_size_GPU), result_array_c+start_GPU, 1, &events_for_computing[0], NULL);
+
+    //read contents of buffer CPU into result array, 0 events, 0 offset
+    clEnqueueReadBuffer(commandQueue_CPU, result_buffer_CPU, CL_FALSE, 0, sizeof(int) * (array_size_CPU), result_array_c + start_CPU, 1, &events_for_computing[1], NULL);
+
+    //make sure we are done reading before printing array
+    clFinish(commandQueue_GPU);
+    clFinish(commandQueue_CPU);
+
 
     //DISPLAY RESULTS
-    for (int i = start; i < array_size; i++)
+    for (int i = 0; i < ARRAY_SIZE; i++)
     {
         if (input_array_a && input_array_b && result_array_c)
             printf("%02d ^ %02d = %d\n", input_array_a[i], input_array_b[i], result_array_c[i]);
     }
 
-    clReleaseMemObject(clmem_input_array_a);
-    clReleaseMemObject(clmem_input_array_b);
-    clReleaseMemObject(clmem_result_array_c);
-    clReleaseCommandQueue(commandQ);
-    clReleaseKernel(kernel);
+    clReleaseMemObject(buffer_GPU1);
+    clReleaseMemObject(buffer_GPU2);
+    clReleaseMemObject(result_buffer_GPU);
+    clReleaseProgram(program_GPU);
+    clReleaseKernel(kernel_GPU);
+    clReleaseCommandQueue(commandQueue_GPU);
+    clReleaseContext(context_GPU);
+
+    clReleaseMemObject(buffer_CPU1);
+    clReleaseMemObject(buffer_CPU2);
+    clReleaseMemObject(result_buffer_CPU);
+    clReleaseProgram(program_CPU);
+    clReleaseKernel(kernel_CPU);
+    clReleaseCommandQueue(commandQueue_CPU);
+    clReleaseContext(context_CPU);
+    free(exponentiate_array_program);
+    
+
+}
+
+
+void Execute_On_Cpu_or_Gpu(int cpu_or_gpu, int* input_array_a, int* input_array_b, int* result_array_c) {
+    cl_context context;
+    cl_int error;
+    cl_command_queue commandQueue;
+    
+    
+    if (cpu_or_gpu == 0) {
+        //executing only on CPU
+        if (checkForCPU() == 0) {
+            printf("NO CPU DETECTED\n");
+            return;
+        }
+        context = clCreateContext(NULL, 1, &cpu_id, NULL, NULL, &error);
+
+        if (error != 0) {
+            printf("Error in getting context. Code %d\n", error);
+        }
+
+        //create a command queue to queue in commands for CPU
+        //1 context and deviceID for each queue and set error code
+        commandQueue = clCreateCommandQueue(context, cpu_id, CL_QUEUE_PROFILING_ENABLE, &error);
+
+        if (error != 0) {
+            printf("Error in getting command queue. Code %d\n", error);
+        }
+
+    }
+    else {
+        //executing only on GPU
+        if (checkForGPU() == 0) {
+            printf("NO GPU DETECTED\n");
+            return;
+        }
+        context = clCreateContext(NULL, 1, &gpu_id, NULL, NULL, &error);
+
+        if (error != 0) {
+            printf("Error in getting context. Code %d\n", error);
+        }
+
+        //create a command queue to queue in commands for CPU
+        //1 context and deviceID for each queue and set error code
+        commandQueue = clCreateCommandQueue(context, gpu_id, CL_QUEUE_PROFILING_ENABLE, &error);
+
+        if (error != 0) {
+            printf("Error in getting command queue. Code %d\n", error);
+        }
+
+    }
+
+
+    /*  create program from source */
+    char* exponentiate_array_program = Get_Kernel_File("Kernels.cl");
+    /*  first, check if the file exists, otherwise, the function returns NULL */
+    if (exponentiate_array_program == NULL)
+    {
+        printf("Could not read an OpenCL from the specified file \n");
+    }
+
+    /*  second, try to create a program from the content of the file */
+    cl_program program = clCreateProgramWithSource(context, 1, (const char**)&exponentiate_array_program, NULL, &error);
+    if (error != 0)
+    {
+        printf("Error in creating program. Code %d\n", error);
+    }
+
+
+
+    //build program
+    clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+
+    //create kernel for your func
+    cl_kernel kernel = clCreateKernel(program, "exponentiateArray", &error);
+
+    if (error != 0) {
+        printf("Error in creating kernel. Code %d\n", error);
+    }
+    // allocate memory in device for input array
+    //like malloc, allocates space in device
+    cl_mem buffer1 = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * ARRAY_SIZE, NULL, &error);
+
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
+    }
+    // allocate memory in device for input array
+    //like malloc, allocates space in device
+    cl_mem buffer2 = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * ARRAY_SIZE, NULL, &error);
+
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
+    }
+
+    // allocate memory in device for input array
+    //like malloc, allocates space in device
+    cl_mem result_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * ARRAY_SIZE, NULL, &error);
+
+    if (error != 0) {
+        printf("Error in creating buffer. Code %d\n", error);
+    }
+  
+    //transfer input array from ram to vram by copying array to buffer
+    // 2 events for writing
+    cl_event events_for_writing[2];
+
+
+
+    error = clEnqueueWriteBuffer(commandQueue, buffer1, CL_FALSE, 0, sizeof(int) * ARRAY_SIZE, input_array_a, 0, NULL, &events_for_writing[0]);
+    if (error != 0) {
+        printf("Error in copying array 1 into buffer. Code %d\n", error);
+    }
+    error = clEnqueueWriteBuffer(commandQueue, buffer2, CL_FALSE, 0, sizeof(int) * ARRAY_SIZE, input_array_b, 0, NULL, &events_for_writing[1]);
+
+    if (error != 0) {
+        printf("Error in copying array 2 into buffer. Code %d\n", error);
+    }
+
+    clFlush(commandQueue);
+
+    //set kernel arguments
+    int sizeOfArray = ARRAY_SIZE;
+    clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffer1);
+    clSetKernelArg(kernel, 1, sizeof(cl_mem), &buffer2);
+    clSetKernelArg(kernel, 2, sizeof(cl_mem), &result_buffer);
+    clSetKernelArg(kernel, 3, sizeof(int), &sizeOfArray);
+
+
+    size_t local = 10;
+    //global has to be multiple of local so need to divide and multiply
+    size_t global = ceil(sizeOfArray / (float)local) * local;
+
+    cl_event event_for_computing;
+    //start work at this point, number of event 0, numbr of dimensions 1 
+    error = clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, &global, &local, 2, events_for_writing, &event_for_computing);
+
+    if (error != 0) {
+        printf("Error in executing kernel. Code %d\n", error);
+    }
+
+    //wait for gpu to finish work
+    error = clFinish(commandQueue);
+
+    if (error != 0) {
+        printf("Error in finishing work. Code %d\n", error);
+    }
+    //calculate the execution time for GPU
+    cl_ulong start, end;
+
+    clGetEventProfilingInfo(event_for_computing, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL);
+    clGetEventProfilingInfo(event_for_computing, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL);
+
+    printf("Time taken to exponentiate array %f ms\n", (end - start) / 1000000.0);
+    
+    //read contents of buffer into result array, 0 events, 0 offset
+    clEnqueueReadBuffer(commandQueue, result_buffer, CL_TRUE, 0, sizeof(int) * ARRAY_SIZE,result_array_c, 0, NULL, NULL);
+
+
+    printf("Final array\n");
+    for (int i = 0; i < ARRAY_SIZE; i++) {
+        printf("%d ^ %d is %d \n",input_array_a[i], input_array_b[i], result_array_c[i]);
+    }
+
+    clReleaseMemObject(buffer1);
+    clReleaseMemObject(buffer2);
+    clReleaseMemObject(result_buffer);
+    free(exponentiate_array_program);
     clReleaseProgram(program);
+    clReleaseKernel(kernel);
+    clReleaseCommandQueue(commandQueue);
     clReleaseContext(context);
-    free(devices);
-    free(platforms);
+ 
+
 }
 
 
@@ -737,39 +769,7 @@ cl_platform_id* Get_Platforms()
     return platforms;
 }
 
-/*
-* Requirements: cl_platform_id *platforms;
-* Usage: Display_Platform_Info(platforms);
-* ----------------------------------------
-* Description: Prints all detected platform's information
-*/
-void Display_All_Platform_Info(const cl_platform_id* platforms)
-{
-    cl_uint num_platforms = Get_Num_Platforms();
 
-    const char* attributes_names[5] = { "Name", "Vendor", "Version", "Profile", "Extensions" };
-    const cl_platform_info attributes_types[5] = { CL_PLATFORM_NAME, CL_PLATFORM_VENDOR, CL_PLATFORM_VERSION, CL_PLATFORM_PROFILE, CL_PLATFORM_EXTENSIONS };
-
-    size_t info_size = 0;
-    char* info;
-
-    for (cl_uint i = 0; i < num_platforms; i++)
-    {
-        printf("\n %d. Platform \n", i + 1);
-
-        for (int j = 0; j < 5; j++)
-        {
-            clGetPlatformInfo(platforms[i], attributes_types[j], 0, NULL, &info_size);
-            info = (char*)malloc(info_size);
-            clGetPlatformInfo(platforms[i], attributes_types[j], info_size, info, NULL);
-
-            printf("%d.%d %-11s: %s\n", i + 1, j + 1, attributes_names[j], info);
-
-            free(info);
-        }
-        printf("\n");
-    }
-}
 
 /*
 * Requirements: cl_platform_id *platforms, cl_uint platform_index
@@ -805,107 +805,6 @@ void Display_Specific_Platform_Info(const cl_platform_id* platforms, const cl_ui
     system("pause");
 }
 
-/*
-* Requirements: cl_platform_id *platforms, cl_uint platform_index
-* Usage: cl_uint num_devices = Get_Num_Devices(platforms, platform_index);
-* ------------------------------------------------------------------------------
-* Description: Returns total number of devices detected in a platform.
-*/
-cl_uint Get_Num_Devices(const cl_platform_id* platforms, const cl_uint platform_index)
-{
-    cl_int status;
-    cl_uint num_devices;
-    status = clGetDeviceIDs(platforms[platform_index], CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices);
-    if (status != CL_SUCCESS)
-    {
-        printf("Could not find any devices.\n");
-        free((void*)platforms);
-        exit(-1);
-    }
-    return num_devices;
-}
-
-/*
-* Requirements: cl_platform_id *platforms, cl_uint platform_index
-* Usage: cl_device_id devices = Get_Devices(platforms, platform_index)
-* ---------------------------------------------------------------------
-* Description: Returns an array of devices detected under the `platforms` array at index `platform_index`.
-*/
-cl_device_id* Get_Devices(cl_platform_id* platforms, const cl_uint platform_index)
-{
-    if (platform_index >= Get_Num_Platforms())
-    {
-        printf("Invalid Index.\n");
-        cl_device_id* devices = (cl_device_id*)malloc(sizeof(cl_device_id)); // return device with no value, as it will be freed in the caller function
-        return devices;
-    }
-
-    cl_uint num_devices = Get_Num_Devices(platforms, platform_index);
-
-    cl_device_id* devices = (cl_device_id*)malloc(sizeof(cl_device_id) * C_ARRAY_SIZE);
-    clGetDeviceIDs(platforms[platform_index], CL_DEVICE_TYPE_ALL, num_devices, devices, NULL);
-    return devices;
-}
-
-/*
-* Requirements: cl_device_id *devices, cl_platform_id *platforms, cl_uint platform_index
-* Usage: Display_All_Device_Info(devices, platforms, platform_index);
-* ---------------------------------------------------------------------------------------
-* Description: Displays all device information under the `platforms` array.
-*/
-void Display_All_Device_Info(const cl_device_id* devices, const cl_platform_id* platforms, const cl_uint platform_index)
-{
-    if (platform_index >= Get_Num_Platforms())
-    {
-        printf("Invalid Index.\n");
-        return;
-    }
-
-    cl_uint num_devices = Get_Num_Devices(platforms, platform_index);
-    clGetDeviceIDs(platforms[platform_index], CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices);
-
-    printf("Number of availble devices in this platform: %d \n", num_devices);
-
-    size_t info_size = 0;
-    char* info;
-
-    cl_uint number_of_compute_units;
-    for (cl_uint i = 0; i < num_devices; ++i)
-    {
-        // display device name 
-        clGetDeviceInfo(devices[i], CL_DEVICE_NAME, 0, NULL, &info_size);
-        info = (char*)malloc(info_size);
-        clGetDeviceInfo(devices[i], CL_DEVICE_NAME, info_size, info, NULL);
-        printf("%d. Device: %s\n", i + 1, info);
-        free(info);
-
-        // display hardware device version 
-        clGetDeviceInfo(devices[i], CL_DEVICE_VERSION, 0, NULL, &info_size);
-        info = (char*)malloc(info_size);
-        clGetDeviceInfo(devices[i], CL_DEVICE_VERSION, info_size, info, NULL);
-        printf("   %d.%d Hardware version      : %s\n", i + 1, 1, info);
-        free(info);
-
-        // display software driver version 
-        clGetDeviceInfo(devices[i], CL_DRIVER_VERSION, 0, NULL, &info_size);
-        info = (char*)malloc(info_size);
-        clGetDeviceInfo(devices[i], CL_DRIVER_VERSION, info_size, info, NULL);
-        printf("   %d.%d Software version      : %s\n", i + 1, 2, info);
-        free(info);
-
-        // print c version supported by compiler for device 
-        clGetDeviceInfo(devices[i], CL_DEVICE_OPENCL_C_VERSION, 0, NULL, &info_size);
-        info = (char*)malloc(info_size);
-        clGetDeviceInfo(devices[i], CL_DEVICE_OPENCL_C_VERSION, info_size, info, NULL);
-        printf("   %d.%d Software version      : %s\n", i + 1, 2, info);
-        free(info);
-
-        // display parallel compute units 
-        clGetDeviceInfo(devices[i], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(number_of_compute_units), &number_of_compute_units, NULL);
-        printf("   %d.%d Parallel compute units: %d\n", i + 1, 4, number_of_compute_units);
-        printf("\n");
-    }
-}
 
 /*
 * Requirements: cl_device_id *devices, cl_uint device_index
@@ -955,6 +854,73 @@ void Display_Specific_Device_Info(const cl_device_id* devices, const cl_uint dev
     system("pause");
     system("cls");
 }
+int checkForCPU() {
+
+    cl_uint number_of_available_platforms = Get_Num_Platforms();
+    cl_platform_id* platforms = Get_Platforms();
+
+    cl_uint number_of_available_cpus = 0;
+    cl_device_id* cpu_devices;
+
+    //search for cpu device and platform
+    for (int i = 0; i < number_of_available_platforms; i++)
+    {
+        // get all devices
+        clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_CPU, 0, NULL, &number_of_available_cpus);
+        cpu_devices = (cl_device_id*)malloc(sizeof(cl_device_id) * number_of_available_cpus);
+        clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_CPU, number_of_available_cpus, cpu_devices, NULL);
+
+        if (number_of_available_cpus > 0) {
+            //selects first available CPU
+            cpu_platform = platforms[i];
+            cpu_id = cpu_devices[0];
+            printf("CPU found on platform:\n");
+            Display_Specific_Platform_Info(platforms, i);
+            printf("Device Info for CPU\n");
+            Display_Specific_Device_Info(cpu_devices, 0);
+            free(cpu_devices);
+            break;
+        }
+
+    }
+    return number_of_available_cpus;
+
+
+}
+
+int checkForGPU() {
+    
+    cl_uint number_of_available_platforms = Get_Num_Platforms();
+    cl_platform_id* platforms = Get_Platforms();
+
+    cl_uint number_of_available_gpus=0;
+    cl_device_id* gpu_devices;
+
+    //search for GPU device and platform
+    for (int i = 0; i < number_of_available_platforms; i++)
+    {
+        // get all devices
+        clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, 0, NULL, &number_of_available_gpus);
+        gpu_devices = (cl_device_id*)malloc(sizeof(cl_device_id) * number_of_available_gpus);
+        clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_GPU, number_of_available_gpus, gpu_devices, NULL);
+
+        if (number_of_available_gpus > 0) {
+            //selects first available CPU
+            cpu_platform = platforms[i];
+            gpu_id = gpu_devices[0];
+            printf("GPU found on platform:\n");
+            Display_Specific_Platform_Info(platforms, i);
+            printf("Device Info for GPU\n");
+            Display_Specific_Device_Info(gpu_devices, 0);
+            free(gpu_devices);
+            break;
+        }
+
+    }
+    return number_of_available_gpus;
+
+}
+
 
 /*
 * Usage: char *filename = Get_Kernel_File("filename")
