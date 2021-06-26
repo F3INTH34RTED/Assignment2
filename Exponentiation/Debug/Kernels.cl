@@ -1,8 +1,17 @@
-__kernel void kernel_exponentiation(__global unsigned long int *a, __global unsigned long int *b, __global unsigned long int *c, const int array_size)
-{
-	int index = get_global_id(0);
-	if (index < array_size)
-	{
-		printf("%lu\n", a[index]);
-	}
+int power(int base, unsigned int exp) {
+    int i;
+    int result = 1;
+    for (i = 0; i < exp; i++)
+        result =result* base;
+    return result;
 }
+
+//the q says its an array of ints so we dont need to use unsigned longs 
+__kernel void exponentiateArray(__global int* array1, __global int* array2, __global int* resultArray, const unsigned int sizeOfArray) {
+    int i = get_global_id(0);
+    if (i < sizeOfArray) { 
+        
+        resultArray[i] = power(array1[i] , array2[i]);
+       
+    }
+};

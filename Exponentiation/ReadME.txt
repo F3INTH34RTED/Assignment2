@@ -1,4 +1,3 @@
-# Assignment2
 Requirements:
 - Minimum hard disk space: 16MB
 - OpenCL Library
